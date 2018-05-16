@@ -1,0 +1,32 @@
+/* Общий каталог стилей */
+
+
+/* тело документа */
+body {
+	/* для отрисовки элементов без отступов от границы */
+	margin: 0px;
+	padding: 0px;
+}
+
+/* область прорисовки svg */
+#svgArea {
+	/* для отображения области вплотную к границе документа */
+	padding: 0px;
+	margin: 0px;
+}
+
+/* стили прямоугольников (rect) в SVG области */
+.rectangle {
+	padding: 0px;
+	fill:rgb(0,0,255);
+	stroke-width:1;
+	stroke: rgb(0,0,0);
+}
+
+.rectangle:hover {
+	fill:rgb(0,255,255);
+}
+
+.text {
+	font: black 14px;
+}
