@@ -5,17 +5,16 @@ class SvgArea {
 	/* поля класса: 
 	SVG - объект SVG DOM-модели
 	LocationsArr - набор локаций
+
+	CurrentDraw - текущий тип отрисовки ("Locations" или "Residents")
+	CurrentLocation - если текущий тип "Residents", то указывает на объект SvgLocation, жители которого нарисованы
+
 	*/
 
 	/* инициализация полей */
 	constructor(SvgDomElement) {
 		this.SVG = SvgDomElement;
 		this.LocationsArr = [];
-
-		/* подвести высоту SVG под высоту документа 
-		разность высоты body и высоты области SVG (body по какой-то причине всегда отступает от нижнего края на 4px) */
-		var diffHeight = document.body.clientHeight - this.SVG.clientHeight;
-		this.SVG.setAttribute("height", document.documentElement.clientHeight - diffHeight);
 	}
 
 	/* прорисовка как завершатся все ajax */
@@ -34,24 +33,21 @@ class SvgArea {
 		/* так как this относительно callback в ajax-запросе меняется */
 		var _this = this;
 		/* прием данных во всех страницам */
-		$.get("https://rickandmortyapi.com/api/location?page=1", function(data) {
+		$.get("https://rickandmortyapi.com/api/location?page=1", 
+			function(data) {
 			/* число страниц */
 			countNeed = data.info.pages;
 			/* записать полученные данные */
 			_this.fullLocationsArr(data);
-
 			/* если страница данных не одна, то сделать эти запросы повторно для остальных страниц */
 			for (var i=2; i<=countNeed; i++) {
 				$.get("https://rickandmortyapi.com/api/location?page="+i, function(data) {
 					_this.fullLocationsArr(data);
-
 					_this.drawAtReady(++count,countNeed);
 				});
 			}
 			_this.drawAtReady(++count,countNeed);
-		});
-
-		
+		});	
 	}
 
 	/* заполнить данные data с сервера в массив this.LocationsArr; элементы - экземпляры класса SvgLocation */
@@ -79,6 +75,8 @@ class SvgArea {
 
 	/* нарисовать прямоугольники для отображения локаций */
 	drawLocations() {
+		/* параметры полотна */
+		this.CurrentDraw = "Locations";
 		/* отсортировать массив локаций */
 		this.sortLocaionsByResidentsCount();
 		/* минимальный шаг отрисовки */
@@ -118,6 +116,8 @@ class SvgArea {
 					width,
 					height
 				);
+				/* добавить обработчик клика */
+				svgRect.onclick = this.onClickHandler;
 				/* добавить его к полотну */
 				this.SVG.appendChild(svgRect);
 				/* добавить число жителей */
@@ -135,9 +135,9 @@ class SvgArea {
 	}
 
 	/* нарисовать данный текст в данной точке (иначе - не привязать) */
-	drawText(sizeLocation, x, y) {
+	drawText(text, x, y) {
 		var textSvg = document.createElementNS("http://www.w3.org/2000/svg","text");
-		textSvg.textContent = sizeLocation;
+		textSvg.textContent = text;
 		textSvg.setAttribute("x", x+2);
 		textSvg.setAttribute("y", y+14);		
 		textSvg.setAttribute("class", "text");
@@ -149,9 +149,135 @@ class SvgArea {
 	sortLocaionsByResidentsCount() {
 		/* функция сравнения двух экземпляров SvgLocation */
 		var compare = function(a,b) {
-			if (a.ResidentsCount < b.ResidentsCount) return -1;
+			if (a.ResidentsCount < b.ResidentsCount) return -1
+			else if (a.ResidentsCount == b.ResidentsCount) return 
+				(a.Name < b.Name)?1:-1;
 			return 1;
 		};
 		this.LocationsArr.sort(compare);
 	}
+
+
+	/* обработка нажатия на элемент SVG локации - заполнение жителей и перерисовка */
+	onClickHandler(event) {
+		var SvgLocation = event.target.SvgLocation;
+		/* если данные уже получены */
+		if (SvgLocation.Cashed) {
+			/* перерисовка сразу */
+			SvgAreaObj.drawResidents(SvgLocation);
+			return;
+		}
+
+		/* получить SvgLocation экземпляр данного SVG */
+		var residentsArr = event.target.SvgLocation.ResidentsArr;
+		var strAjax = "";
+		
+		/* если есть ссылки на жителей  */
+		if (0!=residentsArr.length) {
+			/* перый суффикс запроса */
+			strAjax += residentsArr[0].replace(/.*[/]/, "");
+			/* остальные суффиксы запроса */
+			for (var i =1; i<residentsArr.length; i++){
+				strAjax += "," + residentsArr[i].replace(/.*[/]/, "");
+			}
+			$.get("https://rickandmortyapi.com/api/character/"+strAjax, function(data)  {
+				/* создание массива объектов-жителей SvgResident */
+				var newArr = [];
+				for (var i=0; i<data.length; i++) {
+					var resident = new SvgResident(data[i].name, data[i].status, data[i].species, data[i].type, data[i].gender, data[i].image);
+					newArr.push(resident);
+				}
+				/* если элемент один, то он не в массиве, а значит в цикле он не добавится */
+				if (typeof data.length == "undefined") {
+					var resident = new SvgResident(data.name, data.status, data.species, data.type, data.gender, data.image);
+					newArr.push(resident);
+				}
+				/* замещение массива ссылок на массив жителей */
+				SvgLocation.ResidentsArrObj = newArr;
+				/* флаг того, что данные получены */
+				SvgLocation.Cashed = true;
+				/* перерисовка */
+				SvgAreaObj.drawResidents(SvgLocation);
+			});
+		}
+		else {
+			/* перерисовка */
+			SvgAreaObj.drawResidents(SvgLocation);
+		}
+		
+	}
+
+	/* нарисовать квадраты с картинками для отображения жителей */
+	drawResidents(svgLocation) {
+		/* полотно (плохо - связано с объектом уровня выше) */
+		var svgObject = SvgAreaObj;
+		/* параметры полотна */
+		svgObject.CurrentDraw = "Residents";
+		svgObject.CurrentLocation = svgLocation;
+		/* очистка полотна */
+		svgObject.SVG.innerHTML = "";
+		/* параметры полотна */
+		var height = this.SVG.clientHeight;
+		var width = this.SVG.clientWidth;
+		/* число объектов */
+		var count = svgLocation.ResidentsArrObj.length;
+		/**************************/
+		/* высчитывание нужного размера квадрата
+		c "_" начинаются переменные, используемые для рассчетов */
+		/* число квадратов +1, так как есть 1 пустой квадрат */
+		var _cnt = count+1;
+		/* считаем соотношение сторон */
+		var _a0 = Math.max(width, height)/Math.min(width,height);
+		/* находим длину стороны по следующему принципу:
+		1) соотношение {x : a0*x} (на x столбиков приходится y строк или наоборот)
+		2) x*a0*x = число-квадратов-с-сохранением-пропорции
+		сохранение этой пропорции гарантирует невыход за область рисования
+		3) из этой формулы x = [sqrt(_cnt/a0)]; также нужно взять 
+		округление к ближайшему целому, так как это - множитель, цель которого найти оптимальное число строк и столбцов (из-за пропорции размер x одинаков для целого ряда различного числа квадратов) */
+		var _a1 = Math.ceil(Math.sqrt(_cnt/_a0));
+		/* 
+		4) так как x и a0*x - число строк/столбцов, то их значения - целые => имеет смысл отбросить дробь*/  
+		var _xa0 = _a0*_a1;
+		var _x = _a1;
+		/* 
+		5) осталось только вычислить длину стороны квадрата в пикселях (тут уже не важно - вычислять по длине или высоте, 
+		так как пропорция сохраняет длину стороны постоянной) */
+		var _xa0 = Math.max(width, height)/_xa0;
+		/* длина стороны квадрата (шаг квадрата) 
+		есть погрешность при вычислении таким путем которая видна,
+		 если квадратов мало
+		*/
+		var step = _xa0;
+		/**************************/
+		/* текущие координаты для отрисовки */
+		var y = 0, x = 0;
+		/* первая аватарка - пустой квадрат 
+		 обратиться к классу для создания пустого квадрата */
+		var svgImage = SvgResident.getSvgElementEmpty(
+			x,
+			y,
+			step
+		);
+		/* добавить пустой квадрат к полотну */
+		svgObject.SVG.appendChild(svgImage);
+		/* при нажатии вернуть отрисовку локаций (если так не упаковывать, то this меняется на тип event) */
+		svgImage.onclick = function() { svgObject.drawLocations(); };
+		/* добавить текст к пустому квадрату */
+		svgObject.drawText("Back", x, y);
+		x+=step;
+		/* рисование аватарок */
+		for (var i =0; i<count; i++) {
+			if (x+step-1 >= width) { x=0; y+=step;}
+			/* создать xml прямоугольник данной локации */
+			var svgImage = svgLocation.ResidentsArrObj[i].getSvgElement(
+				x,
+				y,
+				step
+			);
+			/* добавить его к полотну */
+			svgObject.SVG.appendChild(svgImage);
+			x += step;
+		}
+	}
+
 }

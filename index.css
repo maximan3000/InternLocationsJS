@@ -27,6 +27,16 @@ body {
 	fill:rgb(0,255,255);
 }
 
+/* стили текста в SVG */
 .text {
-	font: black 14px;
+	fill:rgb(255,255,255);
+}
+
+/* стили изображений в SVG */
+.image {
+	fill:rgb(255,0,0);
+	opacity: 1;
+}
+.image:hover {
+	opacity: 0.5;
 }
