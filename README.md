@@ -7,7 +7,4 @@
 
 Приложение берет данные из вселенной Rick & Morty с ресурса https://rickandmortyapi.com/documentation, а затем рисует на области SVG синие прямоугольники с локациями (пропорционально их размеру). По щелчку на локации открывается список ее жителей.
 
-<div style="display:flex">
-  <img src="./readme/screen_1.jpg" width="350" style="flex-grow:1">
-  <img src="./readme/screen_2.jpg" width="350" style="flex-grow:1">
-</div>
+![Screen 1](./readme/screen_1.jpg "Локации") ![Screen 2](./readme/screen_2.jpg "Список жителей")
