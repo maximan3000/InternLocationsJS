@@ -28,10 +28,10 @@ class SvgResident {
 		/* создание элемента DOM для информации о локации */
 		var title = document.createElementNS("http://www.w3.org/2000/svg","title");
 		title.innerHTML = 
-			"Name: " + this.Name + "<br>" +
-			"Status: " + this.Status + "<br>" +  
-			"Species: " + this.Species + "<br>" +  
-			"Type: " + this.Type + "<br>" + 
+			"Name: " + this.Name + "\n" +
+			"Status: " + this.Status + "\n" +  
+			"Species: " + this.Species + "\n" +  
+			"Type: " + this.Type + "\n" + 
 			"Gender: " + this.Gender;
 
 		/* создание элемента SVG для отрисовки аватарки */

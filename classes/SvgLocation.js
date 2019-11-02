@@ -56,9 +56,9 @@ class SvgLocation {
 		/* создание элемента DOM для информации о локации */
 		var title = document.createElementNS("http://www.w3.org/2000/svg","title");
 		title.innerHTML = 
-			"Name: " + this.Name + "<br>" + 
-			"Type: " + this.Type + "<br>" + 
-			"Dimension: " + this.Dimension + "<br>" + 
+			"Name: " + this.Name + "\n" + 
+			"Type: " + this.Type + "\n" + 
+			"Dimension: " + this.Dimension + "\n" + 
 			"Has " + this.ResidentsCount + " residents";
 
 		/* создание элемента SVG для отрисовки прямоугольника */
